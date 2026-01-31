@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kahoot: Галогены и Оксиды</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #f2f2f2;
+            background-image: url("https://www.transparenttextures.com/patterns/cubes.png");
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        /* Цвета Kahoot */
+        .k-red { background-color: #e21b3c; box-shadow: 0 4px 0 #9f0e26; }
+        .k-blue { background-color: #1368ce; box-shadow: 0 4px 0 #08438d; }
+        .k-yellow { background-color: #d89e00; box-shadow: 0 4px 0 #916a00; }
+        .k-green { background-color: #26890c; box-shadow: 0 4px 0 #144f05; }
+
+        .k-btn {
+            transition: all 0.1s;
+            cursor: pointer;
+        }
+        .k-btn:active {
+            transform: translateY(4px);
+            box-shadow: none !important;
+        }
+        .k-btn:hover { filter: brightness(1.1); }
+
+        /* Анимации */
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .slide-in { animation: slideIn 0.3s ease-out forwards; }
+        @keyframes slideIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .hidden-screen { display: none !important; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-gray-800">
+
+    <!-- ЗВУКИ -->
+    <audio id="bg-music" loop>
+        <source src="https://assets.mixkit.co/music/preview/mixkit-quiz-show-suspense-loop-809.mp3" type="audio/mp3">
+    </audio>
+    <audio id="sfx-correct" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3"></audio>
+    <audio id="sfx-wrong" src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3"></audio>
+    <audio id="sfx-end" src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3"></audio>
+
+    <!-- 1. ГЛАВНОЕ МЕНЮ -->
+    <div id="start-screen" class="flex-grow flex flex-col items-center justify-center p-4 fade-in h-screen">
+        <div class="bg-white p-8 rounded-2xl shadow-xl text-center max-w-md w-full border-b-8 border-gray-300">
+            <h1 class="text-4xl font-black text-purple-700 mb-2 uppercase">Химия</h1>
+            <h2 class="text-xl font-bold text-gray-500 mb-6">Галогены и Оксиды</h2>
+            
+            <div class="mb-8">
+                <i class="fa-solid fa-shapes text-6xl text-blue-500 animate-bounce"></i>
+            </div>
+
+            <button onclick="startGame()" class="w-full bg-purple-600 text-white font-black text-2xl py-4 rounded-xl shadow-[0_6px_0_rgb(107,33,168)] active:shadow-none active:translate-y-[6px] transition-all">
+                СТАРТ
+            </button>
+            <p class="mt-4 text-sm text-gray-400">Нажми, чтобы начать тест</p>
+        </div>
+    </div>
+
+    <!-- 2. ЭКРАН ИГРЫ -->
+    <div id="game-screen" class="hidden-screen flex-col h-screen">
+        
+        <!-- Верхняя панель -->
+        <div class="flex justify-between items-center p-4 bg-white shadow-md z-10">
+            <div class="bg-gray-100 px-4 py-2 rounded-full font-bold text-gray-600">
+                <span id="question-count">1</span> / 10
+            </div>
+            <div class="text-xl font-black text-purple-700">
+                Очки: <span id="score">0</span>
+            </div>
+        </div>
+
+        <!-- Таймер -->
+        <div class="w-full bg-gray-200 h-2">
+            <div id="timer-bar" class="h-full bg-purple-500 w-full transition-linear"></div>
+        </div>
+
+        <!-- Вопрос -->
+        <div class="flex-grow flex items-center justify-center p-4">
+            <div class="bg-white p-6 md:p-10 rounded-xl shadow-lg text-center max-w-4xl w-full border-b-4 border-gray-200 slide-in">
+                <h2 id="question-text" class="text-2xl md:text-4xl font-black text-gray-800 leading-tight">
+                    Вопрос загружается...
+                </h2>
+            </div>
+        </div>
+
+        <!-- Ответы (Сетка 2x2) -->
+        <div class="p-4 mb-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-6xl mx-auto h-80 md:h-64">
+                
+                <!-- Красный (Треугольник) -->
+                <div onclick="checkAnswer(0)" id="btn-0" class="k-btn k-red rounded-lg flex items-center p-4 relative group text-white">
+                    <div class="bg-black/20 w-12 h-12 flex items-center justify-center rounded-lg mr-4 flex-shrink-0">
+                        <i class="fa-solid fa-play fa-rotate-270 text-2xl"></i> <!-- Треугольник -->
+                    </div>
+                    <span id="ans-0" class="text-xl font-bold w-full">Ответ 1</span>
+                </div>
+
+                <!-- Синий (Ромб) -->
+                <div onclick="checkAnswer(1)" id="btn-1" class="k-btn k-blue rounded-lg flex items-center p-4 relative group text-white">
+                    <div class="bg-black/20 w-12 h-12 flex items-center justify-center rounded-lg mr-4 flex-shrink-0">
+                        <i class="fa-solid fa-diamond text-2xl"></i> <!-- Ромб -->
+                    </div>
+                    <span id="ans-1" class="text-xl font-bold w-full">Ответ 2</span>
+                </div>
+
+                <!-- Желтый (Круг) -->
+                <div onclick="checkAnswer(2)" id="btn-2" class="k-btn k-yellow rounded-lg flex items-center p-4 relative group text-white">
+                    <div class="bg-black/20 w-12 h-12 flex items-center justify-center rounded-full mr-4 flex-shrink-0">
+                        <i class="fa-solid fa-circle text-2xl"></i> <!-- Круг -->
+                    </div>
+                    <span id="ans-2" class="text-xl font-bold w-full">Ответ 3</span>
+                </div>
+
+                <!-- Зеленый (Квадрат) -->
+                <div onclick="checkAnswer(3)" id="btn-3" class="k-btn k-green rounded-lg flex items-center p-4 relative group text-white">
+                    <div class="bg-black/20 w-12 h-12 flex items-center justify-center rounded-lg mr-4 flex-shrink-0">
+                        <i class="fa-solid fa-square text-2xl"></i> <!-- Квадрат -->
+                    </div>
+                    <span id="ans-3" class="text-xl font-bold w-full">Ответ 4</span>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. ЭКРАН РЕЗУЛЬТАТА -->
+    <div id="end-screen" class="hidden-screen flex-grow flex flex-col items-center justify-center p-4 h-screen text-center bg-purple-900 text-white">
+        <h1 class="text-5xl font-black mb-4 animate-bounce">ФИНИШ!</h1>
+        <div class="bg-white text-gray-800 p-8 rounded-2xl shadow-2xl max-w-md w-full">
+            <p class="text-gray-500 mb-2">Твой результат:</p>
+            <div class="text-6xl font-black text-purple-600 mb-6" id="final-score">0</div>
+            <p id="feedback" class="text-xl font-bold mb-6">Молодец!</p>
+            
+            <button onclick="location.reload()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-[0_6px_0_#1e40af] active:shadow-none active:translate-y-[6px] transition-all">
+                Сыграть ещё раз
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // === УПРОЩЕННЫЕ ВОПРОСЫ ===
+        const questions = [
+            {
+                q: "Какой элемент всегда есть в Оксидах?",
+                a: ["Водород (H)", "Кислород (O)", "Азот (N)", "Углерод (C)"],
+                correct: 1 // Кислород
+            },
+            {
+                q: "Формула воды - это...",
+                a: ["H₂O", "CO₂", "NaCl", "O₂"],
+                correct: 0 // H2O
+            },
+            {
+                q: "Какая степень окисления у Кислорода в оксидах?",
+                a: ["+1", "+2", "-2", "-1"],
+                correct: 2 // -2
+            },
+            {
+                q: "Какой газ называют «Веселящим» (для гонок и наркоза)?",
+                a: ["CO (Угарный)", "N₂O (Закись азота)", "O₂ (Кислород)", "He (Гелий)"],
+                correct: 1 // N2O
+            },
+            {
+                q: "Что получится, если смешать Кислотный оксид и Воду?",
+                a: ["Кислота", "Основание", "Соль", "Взрыв"],
+                correct: 0 // Кислота
+            },
+            {
+                q: "Какой оксид является Амфотерным (двойственным)?",
+                a: ["Na₂O", "SO₃", "Al₂O₃", "CaO"],
+                correct: 2 // Al2O3
+            },
+            {
+                q: "Какой Галоген самый сильный и активный?",
+                a: ["Йод (I)", "Бром (Br)", "Хлор (Cl)", "Фтор (F)"],
+                correct: 3 // Фтор
+            },
+            {
+                q: "Минерал Корунд (Рубин/Сапфир) состоит из оксида...",
+                a: ["Железа", "Алюминия", "Меди", "Золота"],
+                correct: 1 // Алюминия
+            },
+            {
+                q: "Основный оксид + Кислотный оксид = ...",
+                a: ["Вода", "Газ", "Соль", "Ничего"],
+                correct: 2 // Соль
+            },
+            {
+                q: "К какой группе в таблице Менделеева относятся Галогены?",
+                a: ["I группа", "II группа", "V группа", "VII группа"],
+                correct: 3 // VII
+            }
+        ];
+
+        // Переменные
+        let currentQ = 0;
+        let score = 0;
+        let timer;
+        let timeLeft = 20;
+        let canClick = false;
+
+        // Элементы
+        const screens = {
+            start: document.getElementById('start-screen'),
+            game: document.getElementById('game-screen'),
+            end: document.getElementById('end-screen')
+        };
+        const els = {
+            qText: document.getElementById('question-text'),
+            qCount: document.getElementById('question-count'),
+            score: document.getElementById('score'),
+            timer: document.getElementById('timer-bar'),
+            finalScore: document.getElementById('final-score'),
+            feedback: document.getElementById('feedback'),
+            answers: [
+                { btn: document.getElementById('btn-0'), txt: document.getElementById('ans-0') },
+                { btn: document.getElementById('btn-1'), txt: document.getElementById('ans-1') },
+                { btn: document.getElementById('btn-2'), txt: document.getElementById('ans-2') },
+                { btn: document.getElementById('btn-3'), txt: document.getElementById('ans-3') }
+            ]
+        };
+        
+        const audio = {
+            bg: document.getElementById('bg-music'),
+            correct: document.getElementById('sfx-correct'),
+            wrong: document.getElementById('sfx-wrong'),
+            end: document.getElementById('sfx-end')
+        };
+
+        // --- ЛОГИКА ---
+
+        function startGame() {
+            // Запуск аудио (нужен жест пользователя)
+            audio.bg.volume = 0.1;
+            audio.bg.play().catch(e => console.log("Music blocked"));
+            
+            screens.start.classList.add('hidden-screen');
+            screens.game.classList.remove('hidden-screen');
+            
+            currentQ = 0;
+            score = 0;
+            els.score.innerText = "0";
+            
+            nextQuestion();
+        }
+
+        function nextQuestion() {
+            if (currentQ >= questions.length) {
+                gameOver();
+                return;
+            }
+
+            const data = questions[currentQ];
+            
+            // UI
+            els.qCount.innerText = currentQ + 1;
+            els.qText.innerText = data.q;
+            
+            // Сброс кнопок
+            els.answers.forEach((item, idx) => {
+                item.txt.innerText = data.a[idx];
+                item.btn.classList.remove('opacity-20', 'ring-4', 'ring-white');
+                // Сброс иконок статуса
+                const statusIcon = item.btn.querySelector('.status-icon');
+                if(statusIcon) statusIcon.remove();
+            });
+
+            // Таймер сброс
+            timeLeft = 20;
+            els.timer.style.transition = 'none';
+            els.timer.style.width = '100%';
+            setTimeout(() => {
+                els.timer.style.transition = 'width 1s linear';
+            }, 10);
+            
+            canClick = true;
+            startTimer();
+        }
+
+        function startTimer() {
+            clearInterval(timer);
+            timer = setInterval(() => {
+                timeLeft--;
+                const percent = (timeLeft / 20) * 100;
+                els.timer.style.width = percent + '%';
+
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    timeIsUp();
+                }
+            }, 1000);
+        }
+
+        function timeIsUp() {
+            canClick = false;
+            audio.wrong.play();
+            showCorrectAnswer();
+            setTimeout(() => {
+                currentQ++;
+                nextQuestion();
+            }, 2000);
+        }
+
+        function checkAnswer(index) {
+            if (!canClick) return;
+            canClick = false;
+            clearInterval(timer);
+
+            const correct = questions[currentQ].correct;
+            const btn = els.answers[index].btn;
+
+            if (index === correct) {
+                // Правильно
+                score += 100 + (timeLeft * 10);
+                els.score.innerText = score;
+                audio.correct.play();
+                
+                // Визуал
+                btn.classList.add('ring-4', 'ring-white');
+                addIcon(btn, 'fa-check');
+                
+                // Скрыть остальные
+                dimOthers(index);
+            } else {
+                // Ошибка
+                audio.wrong.play();
+                btn.classList.add('opacity-50');
+                addIcon(btn, 'fa-xmark');
+                showCorrectAnswer();
+            }
+
+            setTimeout(() => {
+                currentQ++;
+                nextQuestion();
+            }, 2000);
+        }
+
+        function showCorrectAnswer() {
+            const correct = questions[currentQ].correct;
+            const btn = els.answers[correct].btn;
+            btn.classList.remove('opacity-20', 'opacity-50');
+            btn.classList.add('ring-4', 'ring-white');
+            dimOthers(correct);
+        }
+
+        function dimOthers(keepIndex) {
+            els.answers.forEach((item, idx) => {
+                if (idx !== keepIndex) {
+                    item.btn.classList.add('opacity-20');
+                }
+            });
+        }
+
+        function addIcon(btnElement, iconClass) {
+            const icon = document.createElement('i');
+            icon.className = `fa-solid ${iconClass} text-4xl absolute right-4 status-icon`;
+            btnElement.appendChild(icon);
+        }
+
+        function gameOver() {
+            screens.game.classList.add('hidden-screen');
+            screens.end.classList.remove('hidden-screen');
+            audio.bg.pause();
+            audio.end.play();
+            
+            els.finalScore.innerText = score;
+            
+            if (score > 2500) els.feedback.innerText = "Ты настоящий Химик! 🧪";
+            else if (score > 1500) els.feedback.innerText = "Хороший результат! 👍";
+            else els.feedback.innerText = "Попробуй ещё раз! 📚";
+        }
+
+    </script>
+</body>
+</html>
