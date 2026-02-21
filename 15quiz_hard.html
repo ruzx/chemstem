@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Квиз: Химия Оснований</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Merriweather', serif;
+            background-color: #e3f2fd; /* Светло-голубой */
+            background-image: url("https://www.transparenttextures.com/patterns/cubes.png");
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        .card-shadow { box-shadow: 6px 6px 0px rgba(0,0,0,0.1); transition: all 0.2s; }
+        .card-shadow:active { transform: translate(4px, 4px); box-shadow: 2px 2px 0px rgba(0,0,0,0.1); }
+
+        .k-btn {
+            background: #fff;
+            border: 3px solid #1e3a8a; /* Темно-синий */
+            color: #1e3a8a;
+        }
+        .k-btn:hover { background: #eff6ff; }
+        
+        .correct-anim { background-color: #4caf50 !important; color: white !important; border-color: #2e7d32 !important; }
+        .wrong-anim { background-color: #f44336 !important; color: white !important; border-color: #c62828 !important; }
+
+        .hidden-screen { display: none !important; }
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-gray-800">
+
+    <!-- ЗВУКИ -->
+    <audio id="sfx-correct" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3"></audio>
+    <audio id="sfx-wrong" src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3"></audio>
+    <audio id="sfx-end" src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3"></audio>
+
+    <!-- 1. СТАРТ -->
+    <div id="start-screen" class="flex-grow flex flex-col items-center justify-center p-4 fade-in h-screen">
+        <div class="bg-white p-10 rounded-xl border-4 border-blue-800 card-shadow text-center max-w-md w-full">
+            <h1 class="text-3xl font-black text-blue-900 mb-2">ХИМИЯ ОСНОВАНИЙ</h1>
+            <p class="text-gray-600 mb-6 italic">Щёлочи, Формулы и Реакции</p>
+            
+            <div class="mb-8 text-6xl text-blue-600 animate-bounce">
+                <i class="fa-solid fa-flask-vial"></i>
+            </div>
+
+            <button onclick="startGame()" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold text-xl py-4 rounded-lg card-shadow">
+                НАЧАТЬ ТЕСТ
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. ИГРА -->
+    <div id="game-screen" class="hidden-screen flex-col h-screen">
+        <!-- Верхняя панель -->
+        <div class="flex justify-between items-center p-4 bg-blue-900 text-white shadow-md z-10">
+            <div class="font-bold text-lg"><span id="question-count">1</span>/7</div>
+            <div class="font-bold text-lg">Очки: <span id="score">0</span></div>
+        </div>
+
+        <!-- Полоса прогресса -->
+        <div class="w-full bg-gray-300 h-2">
+            <div id="timer-bar" class="h-full bg-blue-500 w-full transition-linear"></div>
+        </div>
+
+        <!-- Вопрос -->
+        <div class="flex-grow flex items-center justify-center p-4">
+            <div class="bg-white p-6 md:p-10 rounded-xl border-2 border-blue-900 shadow-xl text-center max-w-4xl w-full fade-in">
+                <h2 id="question-text" class="text-2xl md:text-3xl font-bold text-gray-800 font-sans">...</h2>
+            </div>
+        </div>
+
+        <!-- Ответы -->
+        <div class="p-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-5xl mx-auto">
+                <div onclick="checkAnswer(0)" id="btn-0" class="k-btn rounded-lg p-5 text-xl font-bold cursor-pointer relative flex items-center card-shadow">
+                    <span class="mr-4 bg-blue-100 w-8 h-8 flex items-center justify-center rounded-full text-sm">A</span>
+                    <span id="ans-0">Option 1</span>
+                </div>
+                <div onclick="checkAnswer(1)" id="btn-1" class="k-btn rounded-lg p-5 text-xl font-bold cursor-pointer relative flex items-center card-shadow">
+                    <span class="mr-4 bg-blue-100 w-8 h-8 flex items-center justify-center rounded-full text-sm">B</span>
+                    <span id="ans-1">Option 2</span>
+                </div>
+                <div onclick="checkAnswer(2)" id="btn-2" class="k-btn rounded-lg p-5 text-xl font-bold cursor-pointer relative flex items-center card-shadow">
+                    <span class="mr-4 bg-blue-100 w-8 h-8 flex items-center justify-center rounded-full text-sm">C</span>
+                    <span id="ans-2">Option 3</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Объяснение (всплывающее) -->
+        <div id="explanation-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+            <div class="bg-white p-8 rounded-xl max-w-lg w-full border-4 border-blue-600 animate-bounce-in">
+                <h3 id="exp-title" class="text-2xl font-bold mb-2"></h3>
+                <p id="exp-text" class="text-lg text-gray-700 mb-6 font-sans"></p>
+                <button onclick="nextQuestion()" class="w-full bg-blue-700 text-white py-3 rounded-lg font-bold text-lg">Далее</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. ФИНИШ -->
+    <div id="end-screen" class="hidden-screen flex-grow flex flex-col items-center justify-center p-4 h-screen text-center bg-blue-900 text-white">
+        <h1 class="text-5xl font-black mb-4">РЕЗУЛЬТАТ</h1>
+        <div class="bg-white text-gray-800 p-10 rounded-xl border-4 border-blue-600 shadow-2xl max-w-md w-full">
+            <p class="text-gray-500 mb-2">Твой счет:</p>
+            <div class="text-6xl font-black text-blue-800 mb-6" id="final-score">0</div>
+            <p id="feedback" class="text-xl font-bold mb-6 italic">...</p>
+            <button onclick="location.reload()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-lg shadow-lg">Еще раз</button>
+        </div>
+    </div>
+
+    <!-- КОНФЕТТИ -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        const questions = [
+            {
+                q: "Как отличить формулу основания от других веществ?",
+                a: ["Начинается с H (водород)", "Заканчивается на группу OH", "Состоит только из двух элементов"],
+                correct: 1,
+                explanation: "Основание — это всегда Металл + Гидроксогруппа (OH). Например: NaOH, Ca(OH)₂."
+            },
+            {
+                q: "Найди ЩЁЛОЧЬ (растворимое основание) среди этих веществ:",
+                a: ["Cu(OH)₂ (Голубой осадок)", "Fe(OH)₃ (Ржавчина)", "KOH (Гидроксид калия)"],
+                correct: 2,
+                explanation: "Щёлочи образуют только активные металлы (Li, Na, K, Ca, Ba). Калий (K) — активный металл."
+            },
+            {
+                q: "Что получается при реакции Активного металла с Водой?\n2Na + 2H₂O → ...",
+                a: ["2NaOH + H₂↑", "Na₂O + H₂↑", "NaH + O₂↑"],
+                correct: 0,
+                explanation: "Активный металл вытесняет водород и образует Щёлочь. Правильный ответ: 2NaOH + H₂."
+            },
+            {
+                q: "Фенолфталеин капнули в раствор NaOH. Каким станет цвет?",
+                a: ["Бесцветным", "Малиновым", "Синим"],
+                correct: 1,
+                explanation: "«Фенолфталеиновый — в щелочах МАЛИНОВЫЙ». Это главный признак щелочи."
+            },
+            {
+                q: "Закончи уравнение реакции Основного оксида с водой:\nCaO + H₂O → ...",
+                a: ["Ca + H₂O₂", "Ca(OH)₂", "Реакция не идет"],
+                correct: 1,
+                explanation: "Основный оксид активного металла при реакции с водой дает основание (Щёлочь). CaO + H₂O = Ca(OH)₂."
+            },
+            {
+                q: "Реакция Нейтрализации — это взаимодействие:",
+                a: ["Кислота + Основание", "Металл + Неметалл", "Оксид + Вода"],
+                correct: 0,
+                explanation: "Нейтрализация — это когда Кислота (H⁺) и Основание (OH⁻) убивают друг друга, образуя соль и воду."
+            },
+            {
+                q: "Что получится в реакции нейтрализации?\nHCl + NaOH → ...",
+                a: ["NaCl + H₂O", "NaH + ClOH", "Взрыв"],
+                correct: 0,
+                explanation: "Обменная реакция: Na берет Cl (Соль), а H берет OH (Вода). Итог: NaCl + H₂O."
+            }
+        ];
+
+        let currentQ = 0;
+        let score = 0;
+        let timer;
+        let timeLeft = 20;
+
+        const els = {
+            start: document.getElementById('start-screen'),
+            game: document.getElementById('game-screen'),
+            end: document.getElementById('end-screen'),
+            qText: document.getElementById('question-text'),
+            qCount: document.getElementById('question-count'),
+            score: document.getElementById('score'),
+            timer: document.getElementById('timer-bar'),
+            modal: document.getElementById('explanation-modal'),
+            expTitle: document.getElementById('exp-title'),
+            expText: document.getElementById('exp-text'),
+            btns: [document.getElementById('btn-0'), document.getElementById('btn-1'), document.getElementById('btn-2')],
+            txts: [document.getElementById('ans-0'), document.getElementById('ans-1'), document.getElementById('ans-2')]
+        };
+
+        const audio = {
+            correct: document.getElementById('sfx-correct'),
+            wrong: document.getElementById('sfx-wrong'),
+            end: document.getElementById('sfx-end')
+        };
+
+        function startGame() {
+            els.start.classList.add('hidden-screen');
+            els.game.classList.remove('hidden-screen');
+            currentQ = 0;
+            score = 0;
+            loadQ();
+        }
+
+        function loadQ() {
+            if (currentQ >= questions.length) return endGame();
+            
+            const q = questions[currentQ];
+            els.qText.innerText = q.q;
+            els.qCount.innerText = currentQ + 1;
+            els.modal.classList.add('hidden');
+            
+            // Reset buttons
+            els.btns.forEach((btn, i) => {
+                els.txts[i].innerText = q.a[i];
+                btn.className = "k-btn rounded-lg p-5 text-xl font-bold cursor-pointer relative flex items-center card-shadow";
+                btn.onclick = () => check(i);
+            });
+
+            // Timer
+            timeLeft = 30; // Даем чуть больше времени на формулы
+            els.timer.style.transition = 'none';
+            els.timer.style.width = '100%';
+            setTimeout(() => els.timer.style.transition = 'width 1s linear', 10);
+            
+            clearInterval(timer);
+            timer = setInterval(() => {
+                timeLeft--;
+                els.timer.style.width = (timeLeft / 30 * 100) + '%';
+                if(timeLeft <= 0) check(-1);
+            }, 1000);
+        }
+
+        function check(idx) {
+            clearInterval(timer);
+            const q = questions[currentQ];
+            const isCorrect = (idx === q.correct);
+
+            if (isCorrect) {
+                score += 100 + (timeLeft * 5);
+                els.score.innerText = score;
+                els.btns[idx].classList.add('correct-anim');
+                audio.correct.play();
+                els.expTitle.innerText = "Верно! 🧪";
+                els.expTitle.className = "text-2xl font-bold mb-2 text-green-600";
+            } else {
+                if(idx !== -1) els.btns[idx].classList.add('wrong-anim');
+                els.btns[q.correct].classList.add('correct-anim');
+                audio.wrong.play();
+                els.expTitle.innerText = "Ошибка 💥";
+                els.expTitle.className = "text-2xl font-bold mb-2 text-red-600";
+            }
+
+            els.expText.innerText = q.explanation;
+            setTimeout(() => {
+                els.modal.classList.remove('hidden');
+                els.modal.classList.add('flex');
+            }, 800);
+        }
+
+        function nextQuestion() {
+            currentQ++;
+            loadQ();
+        }
+
+        function endGame() {
+            els.game.classList.add('hidden-screen');
+            els.end.classList.remove('hidden-screen');
+            audio.end.play();
+            document.getElementById('final-score').innerText = score;
+            
+            let txt = "";
+            if(score > 1500) txt = "Химический Гений! 🧬";
+            else if(score > 800) txt = "Хороший результат! 👍";
+            else txt = "Нужно подучить формулы... 📖";
+            document.getElementById('feedback').innerText = txt;
+            
+            if(score > 800) confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+        }
+    </script>
+</body>
+</html>
