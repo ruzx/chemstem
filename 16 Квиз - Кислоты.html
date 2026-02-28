@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Гранд-Квиз: Кислоты и Основания</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --neon-green: #ccff00;
+            --dark-bg: #121212;
+            --panel-bg: #222222;
+            --text-color: #e0e0e0;
+        }
+
+        /* FIX: Убираем "шатание" экрана */
+        html {
+            overflow-y: scroll; /* Скроллбар всегда виден, чтобы экран не прыгал */
+        }
+
+        body {
+            font-family: 'Rubik', sans-serif;
+            background-color: var(--dark-bg);
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), 
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Контейнер фиксированной минимальной высоты */
+        .game-container {
+            width: 100%;
+            max-width: 800px;
+            min-height: 500px; /* Чтобы не скакало при смене контента */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .neon-text {
+            color: var(--neon-green);
+            text-shadow: 0 0 10px rgba(204, 255, 0, 0.4);
+        }
+
+        .k-btn {
+            background: var(--panel-bg);
+            border: 2px solid #444;
+            color: white;
+            transition: all 0.15s ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+        .k-btn:hover:not(:disabled) {
+            border-color: var(--neon-green);
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            background: #2a2a2a;
+        }
+        .k-btn:active:not(:disabled) {
+            transform: translateY(1px);
+        }
+
+        .correct-anim { 
+            background-color: #1b5e20 !important; 
+            border-color: #4caf50 !important; 
+            color: #fff !important;
+        }
+        .wrong-anim { 
+            background-color: #b71c1c !important; 
+            border-color: #f44336 !important; 
+            color: #fff !important;
+        }
+
+        .hidden-screen { display: none !important; }
+        
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <!-- ЗВУКИ -->
+    <audio id="sfx-correct" src="https://assets.mixkit.co/sfx/preview/mixkit-sci-fi-click-900.mp3"></audio>
+    <audio id="sfx-wrong" src="https://assets.mixkit.co/sfx/preview/mixkit-tech-break-fail-2947.mp3"></audio>
+    <audio id="sfx-end" src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3"></audio>
+
+    <div class="game-container p-4">
+        
+        <!-- 1. СТАРТ -->
+        <div id="start-screen" class="text-center fade-in">
+            <div class="bg-gray-800 p-10 rounded-3xl border-4 border-gray-700 shadow-2xl">
+                <h1 class="text-5xl font-black neon-text mb-4">ХИМИЧЕСКИЙ<br>БЛИЦ</h1>
+                <p class="text-xl text-gray-400 mb-8">История, Взрывы и Формулы</p>
+                
+                <div class="mb-10 text-7xl text-gray-200 animate-pulse">
+                    <i class="fa-solid fa-atom"></i>
+                </div>
+
+                <button onclick="startGame()" class="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white font-bold text-2xl py-5 rounded-2xl shadow-lg transition transform">
+                    ПОЕХАЛИ!
+                </button>
+            </div>
+        </div>
+
+        <!-- 2. ИГРА -->
+        <div id="game-screen" class="hidden-screen w-full">
+            
+            <!-- Инфо панель -->
+            <div class="flex justify-between items-center mb-6 bg-gray-800 p-4 rounded-xl border border-gray-700">
+                <div class="text-gray-400 font-bold font-mono text-lg">
+                    <i class="fa-regular fa-circle-question mr-2"></i><span id="question-count">1</span>/12
+                </div>
+                <div class="text-green-400 font-bold font-mono text-xl">
+                    <span id="score">0</span> XP
+                </div>
+            </div>
+
+            <!-- Прогресс бар -->
+            <div class="w-full bg-gray-700 h-3 rounded-full mb-8 overflow-hidden">
+                <div id="timer-bar" class="h-full bg-green-500 w-full transition-linear rounded-full"></div>
+            </div>
+
+            <!-- Карточка вопроса -->
+            <div class="bg-gray-800 p-8 rounded-2xl border-l-8 border-green-500 shadow-xl mb-8 fade-in min-h-[160px] flex items-center justify-center">
+                <h2 id="question-text" class="text-2xl md:text-3xl font-bold leading-tight text-center">...</h2>
+            </div>
+
+            <!-- Ответы -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button onclick="checkAnswer(0)" id="btn-0" class="k-btn p-5 rounded-xl text-lg font-bold text-left flex items-center h-24">
+                    <span class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center mr-4 text-xs font-mono text-gray-300">A</span>
+                    <span id="ans-0">...</span>
+                </button>
+                <button onclick="checkAnswer(1)" id="btn-1" class="k-btn p-5 rounded-xl text-lg font-bold text-left flex items-center h-24">
+                    <span class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center mr-4 text-xs font-mono text-gray-300">B</span>
+                    <span id="ans-1">...</span>
+                </button>
+                <button onclick="checkAnswer(2)" id="btn-2" class="k-btn p-5 rounded-xl text-lg font-bold text-left flex items-center h-24">
+                    <span class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center mr-4 text-xs font-mono text-gray-300">C</span>
+                    <span id="ans-2">...</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 3. ФИНИШ -->
+        <div id="end-screen" class="hidden-screen text-center">
+            <h1 class="text-5xl font-black neon-text mb-6">РЕЗУЛЬТАТ</h1>
+            <div class="bg-gray-800 p-10 rounded-3xl border-4 border-gray-700 shadow-2xl">
+                <p class="text-gray-400 text-lg uppercase tracking-widest mb-4">Набрано очков</p>
+                <div class="text-8xl font-black text-white mb-6" id="final-score">0</div>
+                <p id="feedback" class="text-xl font-bold text-green-400 mb-10">...</p>
+                <button onclick="location.reload()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-xl shadow-lg text-xl">
+                    ЕЩЕ РАЗ
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Модальное окно (Объяснение) -->
+    <div id="explanation-modal" class="fixed inset-0 bg-black/90 hidden flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+        <div class="bg-gray-800 p-8 rounded-2xl max-w-lg w-full border-2 border-gray-600 shadow-2xl animate-bounce-in relative">
+            <div id="exp-header" class="text-3xl font-black mb-4"></div>
+            <div class="w-full h-1 bg-gray-700 mb-4"></div>
+            <p id="exp-text" class="text-lg text-gray-300 mb-8 leading-relaxed"></p>
+            <button onclick="nextQuestion()" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl text-xl shadow-lg transition transform active:scale-95">
+                ДАЛЕЕ <i class="fa-solid fa-arrow-right ml-2"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Конфетти -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        const questions = [
+            // --- ИСТОРИЯ И ЭТИМОЛОГИЯ ---
+            {
+                q: "Арабское слово «Al-Qali» (откуда пошло слово «Щёлочь») означает...",
+                a: ["Морской песок", "Прокаленная зола", "Овечья шерсть"],
+                correct: 1,
+                explanation: "Древние химики сжигали растения, а из их золы (содержащей поташ) варили первое мыло. Щёлочь = Зола."
+            },
+            {
+                q: "Почему Лавуазье назвал элемент «Окси-ген» (Кислород)?",
+                a: ["Он думал, что кислород рождает кислоты", "Газ был кислым на вкус", "Это переводится как «Жизнь»"],
+                correct: 0,
+                explanation: "Он ошибался. Он думал, что кислоту делает кислотой именно кислород (Oxygenium = рождающий кислоту). Позже доказали, что главный — Водород."
+            },
+            {
+                q: "Слово «Основание» (Base) придумали, потому что это вещество...",
+                a: ["Является базой для строительства", "Служит «фундаментом» для соли", "Самое главное в химии"],
+                correct: 1,
+                explanation: "В 18 веке считали, что Основание — это «база», которая ловит летучую кислоту и превращает её в твердую соль."
+            },
+            {
+                q: "Как Роберт Бойль открыл Индикаторы?",
+                a: ["Случайно капнул кислотой на фиалки", "Смешал вино с мелом", "Увидел, как краснеет лакмусовый лишайник"],
+                correct: 0,
+                explanation: "Он зашел в лабораторию с букетом фиалок, капнул на них кислотой, и они покраснели. Так родилась идея индикаторов."
+            },
+            // --- ТЕОРИЯ И СВОЙСТВА ---
+            {
+                q: "Теория Аррениуса: Что делает кислоту кислотой?",
+                a: ["Атомы кислорода (O)", "Ионы Водорода (H⁺)", "Кислый вкус"],
+                correct: 1,
+                explanation: "Кислота — это вещество, которое в воде распадается и дает ионы Водорода (H⁺)."
+            },
+            {
+                q: "Теория Аррениуса: Что делает основание основанием?",
+                a: ["Ионы Гидроксида (OH⁻)", "Наличие Металла", "Мыльный эффект"],
+                correct: 0,
+                explanation: "Основание (Щёлочь) при растворении дает ионы OH⁻. Именно они окрашивают фенолфталеин в малиновый."
+            },
+            {
+                q: "Какая кислота находится в твоем желудке?",
+                a: ["Серная (H₂SO₄)", "Лимонная", "Соляная (HCl)"],
+                correct: 2,
+                explanation: "Соляная кислота (HCl). Она убивает микробов и помогает переваривать белки."
+            },
+            {
+                q: "Где используется Серная кислота (H₂SO₄)?",
+                a: ["В автомобильных аккумуляторах", "В газировке", "В мыле"],
+                correct: 0,
+                explanation: "Это электролит в аккумуляторе. Она очень едкая и опасная («Хлеб химической промышленности»)."
+            },
+            // --- РЕАКЦИИ И ЛОГИКА ---
+            {
+                q: "Что такое «Царская водка»?",
+                a: ["Смесь кислот, растворяющая золото", "Любимый напиток Менделеева", "Чистый спирт"],
+                correct: 0,
+                explanation: "Это адская смесь Азотной и Соляной кислот. Она единственная может растворить золото (царя металлов)."
+            },
+            {
+                q: "Если положить сырое яйцо в уксус, что произойдет?",
+                a: ["Оно сварится", "Скорлупа растворится (станет мягким)", "Взорвется"],
+                correct: 1,
+                explanation: "Скорлупа — это карбонат кальция. Кислота реагирует с ним, выделяя газ CO₂, и скорлупа исчезает."
+            },
+            {
+                q: "Реакция Нейтрализации: NaOH + HCl → ...",
+                a: ["Взрыв", "Соль (NaCl) + Вода", "Новая кислота"],
+                correct: 1,
+                explanation: "Кислота и Щёлочь убивают друг друга. H + OH превращаются в Воду. Остается соленая вода."
+            },
+            {
+                q: "В какой цвет фенолфталеин окрасит раствор Щёлочи?",
+                a: ["Синий", "Малиновый", "Бесцветный"],
+                correct: 1,
+                explanation: "Запомни: «Фенолфталеиновый — в щелочах МАЛИНОВЫЙ»."
+            }
+        ];
+
+        let currentQ = 0;
+        let score = 0;
+        let timer;
+        let timeLeft = 25;
+
+        const els = {
+            start: document.getElementById('start-screen'),
+            game: document.getElementById('game-screen'),
+            end: document.getElementById('end-screen'),
+            qText: document.getElementById('question-text'),
+            qCount: document.getElementById('question-count'),
+            score: document.getElementById('score'),
+            timer: document.getElementById('timer-bar'),
+            modal: document.getElementById('explanation-modal'),
+            expHeader: document.getElementById('exp-header'),
+            expText: document.getElementById('exp-text'),
+            btns: [document.getElementById('btn-0'), document.getElementById('btn-1'), document.getElementById('btn-2')],
+            txts: [document.getElementById('ans-0'), document.getElementById('ans-1'), document.getElementById('ans-2')]
+        };
+
+        const audio = {
+            correct: document.getElementById('sfx-correct'),
+            wrong: document.getElementById('sfx-wrong'),
+            end: document.getElementById('sfx-end')
+        };
+
+        function startGame() {
+            els.start.classList.add('hidden-screen');
+            els.game.classList.remove('hidden-screen');
+            currentQ = 0;
+            score = 0;
+            loadQ();
+        }
+
+        function loadQ() {
+            if (currentQ >= questions.length) return endGame();
+            
+            const q = questions[currentQ];
+            els.qText.innerText = q.q;
+            els.qCount.innerText = currentQ + 1;
+            els.modal.classList.add('hidden');
+            
+            // Reset buttons
+            els.btns.forEach((btn, i) => {
+                els.txts[i].innerText = q.a[i];
+                btn.className = "k-btn p-5 rounded-xl text-lg font-bold text-left flex items-center h-24 w-full relative overflow-hidden";
+                btn.disabled = false;
+                btn.onclick = () => check(i);
+            });
+
+            // Timer
+            timeLeft = 25; 
+            els.timer.style.transition = 'none';
+            els.timer.style.width = '100%';
+            els.timer.classList.remove('bg-red-500');
+            els.timer.classList.add('bg-green-500');
+            
+            setTimeout(() => els.timer.style.transition = 'width 1s linear', 10);
+            
+            clearInterval(timer);
+            timer = setInterval(() => {
+                timeLeft--;
+                els.timer.style.width = (timeLeft / 25 * 100) + '%';
+                if(timeLeft < 8) {
+                    els.timer.classList.remove('bg-green-500');
+                    els.timer.classList.add('bg-red-500');
+                }
+                if(timeLeft <= 0) check(-1);
+            }, 1000);
+        }
+
+        function check(idx) {
+            clearInterval(timer);
+            const q = questions[currentQ];
+            const isCorrect = (idx === q.correct);
+            
+            // Блокируем кнопки
+            els.btns.forEach(b => b.disabled = true);
+
+            if (isCorrect) {
+                score += 100 + (timeLeft * 5);
+                els.score.innerText = score;
+                els.btns[idx].classList.add('correct-anim');
+                audio.correct.play();
+                
+                els.expHeader.innerText = "ВЕРНО! 🎉";
+                els.expHeader.className = "text-3xl font-black mb-4 text-green-400";
+            } else {
+                if(idx !== -1) els.btns[idx].classList.add('wrong-anim');
+                els.btns[q.correct].classList.add('correct-anim'); // Показать правильный
+                audio.wrong.play();
+                
+                els.expHeader.innerText = "ОШИБКА 💀";
+                els.expHeader.className = "text-3xl font-black mb-4 text-red-500";
+            }
+
+            els.expText.innerText = q.explanation;
+            
+            setTimeout(() => {
+                els.modal.classList.remove('hidden');
+                els.modal.classList.add('flex');
+            }, 600);
+        }
+
+        function nextQuestion() {
+            currentQ++;
+            loadQ();
+        }
+
+        function endGame() {
+            els.game.classList.add('hidden-screen');
+            els.end.classList.remove('hidden-screen');
+            audio.end.play();
+            document.getElementById('final-score').innerText = score;
+            
+            let txt = "";
+            if(score > 2500) txt = "ТЫ НОВЫЙ ЛАВУАЗЬЕ! 🥇";
+            else if(score > 1500) txt = "ОТЛИЧНЫЕ ЗНАНИЯ! 👍";
+            else txt = "НУЖНО ЕЩЕ ПОЧИТАТЬ... 🧪";
+            document.getElementById('feedback').innerText = txt;
+            
+            if(score > 1500) confetti({ particleCount: 200, spread: 120, origin: { y: 0.6 } });
+        }
+    </script>
+</body>
+</html>
